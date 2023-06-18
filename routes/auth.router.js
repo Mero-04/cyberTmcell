@@ -3,7 +3,7 @@ const router = express.Router();
 const { Admin, Worker } = require('../models/model');
 const jwt = require("jsonwebtoken");
 const bcrypt = require('bcrypt');
-const { validateToken, isAdmin } = require("../middlewares/authMiddleware");
+const { isAdmin } = require("../middlewares/authMiddleware");
 
 router.post("/rootman", async (req, res) => {
     const { email, password } = req.body;
@@ -29,14 +29,14 @@ router.post("/rootman", async (req, res) => {
 });
 
   
-// router.get("/current_user", validateToken, async (req, res) => {
-//     res.json(req.user)
-// });
+router.get("/current_user", isAdmin, async (req, res) => {
+    res.json(req.user)
+});
 
 
   let refreshTokens = [];
   
-  router.post("/api/refresh", (req, res) => {
+  router.post("/refresh",  (req, res) => {
     //take the refresh token from the user
     const refreshToken = req.body.token;
   
@@ -73,7 +73,7 @@ router.post("/rootman", async (req, res) => {
     return jwt.sign({ id: user.id, role: user.role }, "myRefreshSecretKey");
   };
    
-  router.post("/api/logout", isAdmin, (req, res) => {
+  router.post("/logout",  (req, res) => {
     const refreshToken = req.body.token;
     refreshTokens = refreshTokens.filter((token) => token !== refreshToken);
     res.status(200).json("You logged out successfully.");
