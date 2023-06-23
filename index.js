@@ -20,8 +20,10 @@ app.use('/api', express.static('public'))
 
 
 const AuthRouter = require("./routes/auth.router")
+const CyberRouter = require("./routes/cyber.router")
 
 app.use("/api/v1/auth", AuthRouter);
+app.use("/api/v1/cyber", CyberRouter);
 
 
 app.listen(port, () => {
