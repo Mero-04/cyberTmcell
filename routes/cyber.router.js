@@ -3,14 +3,18 @@ const router = express.Router();
 const fs = require('fs');
 
 router.get("/", async (req, res) => {
-  var array = [];
-  fs.readFile("./logs/eve.json", (file) => {
-    const string = file.toString()
-    const end = '[' + string.slice(0, -2) + ']';
-    const logs = JSON.parse(end)
-    res.json({ logs })
+  fs.readFile("./logs/eve.json",  (file) => {
+    const myJSON = JSON.stringify(file);
+    
+
+
+    res.json({ myJSON })
+
   });
+
 });
 
+    // const end = '[' + string.slice(0, -2) + ']';
+    // const logs = JSON.parse(end)
 
 module.exports = router;
