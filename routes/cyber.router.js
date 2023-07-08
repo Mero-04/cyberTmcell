@@ -4,7 +4,7 @@ const fs = require('fs');
 
 router.get("/", async (req, res) => {
   var array = [];
-  fs.readFile("./logs/json_log.log", (file) => {
+  fs.readFile("./logs/eve.json", (file) => {
     const string = file.toString()
     const end = '[' + string.slice(0, -2) + ']';
     const logs = JSON.parse(end)
