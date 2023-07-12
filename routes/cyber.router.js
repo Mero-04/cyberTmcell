@@ -31,10 +31,14 @@ global.createPDFFile = function (htmlString, fileName, callback) {
 // });
 
 router.get("/", async (req, res) => {
-    let data = fs.readFileSync(`./logs/fast.log`, "utf-8");
-    let info = data.toString().split("\n");
-    var array = JSON.parse(info);
-    res.json({ array })
+    // let data = fs.readFileSync(`./logs/fast.log`, "utf-8");
+    // let info = data.toString().split("\n");
+    // var array = JSON.parse(info);
+    // res.json({ array })
+
+
+   
+    
 
 });
 
