@@ -9,7 +9,8 @@ const helmet = require("helmet");
 // const apilimiter = require("./middlewares/rateLimit");
 // app.use("/api", apilimiter)
 
-
+var ejs = require('ejs');
+app.set('view engine', 'ejs');
 app.use(express.json());
 app.use(express.json({ limit: "50mb" }))
 app.use(express.urlencoded({ limit: "50mb", extended: true, parameterLimit: 50000 }))

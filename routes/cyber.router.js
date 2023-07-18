@@ -5,12 +5,16 @@ const ejs = require("ejs");
 const pdf = require("html-pdf");
 const path = require("path");
 const emailService = require("../helpers/send-mail");
+const moment = require("moment")
+
+const atlar = [{ id: "01", month: "Ýanwar" }, { id: "02", month: "Fewral" }, { id: "03", month: "Mart" }, { id: "04", month: "Aprel" }, { id: "05", month: "Maý" }, { id: "06", month: "Iýun" }, { id: "07", month: "Iýul" }, { id: "08", month: "Awgust" }, { id: "09", month: "Sentýabr" }, { id: "10", month: "Oktýabr" }, { id: "11", month: "Noýabr" }, { id: "12", month: "Dekabr" }]
 
 global.createPDFFile = function (htmlString, fileName, callback) {
     var options = {
         format: "A4",
         orientation: "landscape",
-        timeout: 600000,
+        timeout: 6000000,
+        renderDelay: 5000,
     };
     pdf.create(htmlString, options).toFile("./public/pdf/" + fileName, function (err, data) {
         if (err) return console.log(err);
@@ -31,28 +35,192 @@ global.createPDFFile = function (htmlString, fileName, callback) {
 // });
 
 router.get("/", async (req, res) => {
-    // let data = fs.readFileSync(`./logs/fast.log`, "utf-8");
-    // let info = data.toString().split("\n");
-    // var array = JSON.parse(info);
-    // res.json({ array })
+    let data = fs.readFileSync(`./logs/fast.log`, "utf-8");
+    let info = data.toString().split("\n");
+    var alerts = [];
+    for (i = 0; i < info.length; i++) {
+
+        let text = info[i];
+
+        const day = text.substring(3, 5);
+
+        const time = text.substring(0, 25);
+        text = text.substring(34)
+
+        const hex = text.substring(0, 11);
+        text = text.substring(13)
+
+        const alert = text.substring(0, text.indexOf("[**]") - 1);
+        text = text.substring(text.indexOf("{") + 1)
+
+        const protocol = text.substring(0, text.indexOf("}"));
+        text = text.substring(text.indexOf("}") + 2)
+
+        const destination_ip = text.substring(0, text.indexOf(":"));
+        text = text.substring(text.indexOf(":") + 1)
+
+        const destination_port = text.substring(0, text.indexOf("->") - 1);
+        text = text.substring(text.indexOf("->") + 3)
+
+        const src_ip = text.substring(0, text.indexOf(":"));
+        text = text.substring(text.indexOf(":") + 1)
+
+        const src_port = text.substring(0);
+
+        let obj = {
+            'day': day,
+            'time': time,
+            'hex': hex,
+            'alert': alert,
+            'protocol': protocol,
+            'destination_ip': destination_ip,
+            'destination_port': destination_port,
+            'src_ip': src_ip,
+            'src_port': src_port
+
+        }
+        alerts.push(obj)
+    }
+
+    const month = moment().format('MM-DD-YYYY hh:mm');
+
+    const thisMonthName = atlar.filter(obj => {
+        return obj.id === month.slice(0, 2)
+    })
+
+    console.log(thisMonthName)
+
+    let result = alerts.filter(function (item) {
+        return typeof item.time == 'string' && item.time.startsWith(month.slice(0, 2) + "/");
+    });
 
 
-   
+    const data1 = Object.values(result.reduce(
+        (map, el) => {
+            map[el.day] ? map[el.day].count++ : map[el.day] = {
+                ...el,
+                count: 1
+            };
+            return map;
+        }, {}
+    ));
+
+    const data2 = Object.values(result.reduce(
+        (map, el) => {
+            map[el.alert] ? map[el.alert].count++ : map[el.alert] = {
+                ...el,
+                count: 1
+            };
+            return map;
+        }, {}
+    ));
+
+    const data3 = Object.values(result.reduce(
+        (map, el) => {
+            map[el.destination_ip] ? map[el.destination_ip].count++ : map[el.destination_ip] = {
+                ...el,
+                count: 1
+            };
+            return map;
+        }, {}
+    ));
+
+    const gundelikGrafikDays = data1.map((data) => {
+        return data.day
+    });
+
+    const gundelikGrafikDaysCount = data1.map((data) => {
+        return data.count
+    });
+
+    const gundelikGrafikAtly1 = data1.map((data) => {
+        return {
+            'day': thisMonthName[0].month + " " + data.day,
+            'count': data.count
+        }
+    }).sort((a, b) => b.day - a.day).slice(0, 10);
     
+    const gundelikGrafikAtly2 = data1.map((data) => {
+        return {
+            'day': thisMonthName[0].month + " " + data.day,
+            'count': data.count
+        }
+    }).sort((a, b) => b.day - a.day).slice(10, 20);
+    
+    const gundelikGrafikAtly3 = data1.map((data) => {
+        return {
+            'day': thisMonthName[0].month + " " + data.day,
+            'count': data.count
+        }
+    }).sort((a, b) => b.day - a.day).slice(20);
 
+    const attacks = data2.map((data) => {
+        return {
+            'name': data.alert,
+            'count': data.count
+        }
+    }).sort((a, b) => b.count - a.count).slice(0, 10);
+
+    const ip = data3.map((data) => {
+        return {
+            'ip': data.destination_ip,
+            'count': data.count
+        }
+    }).sort((a, b) => b.count - a.count).slice(0, 10);
+
+    const ip2 = data3.map((data) => {
+        return {
+            'ip': data.destination_ip,
+            'count': data.count
+        }
+    }).sort((a, b) => b.count - a.count).slice(10, 20);
+
+    const allData = {
+        gundelikGrafikDays,
+        gundelikGrafikDaysCount,
+        gundelikGrafikAtly1,
+        gundelikGrafikAtly2,
+        gundelikGrafikAtly3,
+        attacks,
+        ip,
+        ip2
+    }
+
+    // res.render('hasabat', {
+    //     gundelikGrafikAtly: gundelikGrafikAtly,
+    //     gundelikGrafik: gundelikGrafik,
+    //     attacks: attacks,
+    //     ip: ip,
+    //     ip2: ip2
+    // })
+
+    ejs.renderFile(path.join(__dirname, "../views/", "hasabat.ejs"), {
+        gundelikGrafikAtly1: gundelikGrafikAtly1,
+        gundelikGrafikAtly2: gundelikGrafikAtly2,
+        gundelikGrafikAtly3: gundelikGrafikAtly3,
+        gundelikGrafikDays: gundelikGrafikDays,
+        gundelikGrafikDaysCount: gundelikGrafikDaysCount,
+        attacks: attacks,
+        ip: ip,
+        ip2: ip2
+    }, (err, data) => {
+        if (err) {
+            res.send(err);
+        } else {
+            global.createPDFFile(data, month.slice(0, 2) + ".pdf", async function (err, result) {
+                if (err) {
+                    console.log(err);
+                } else {
+                    console.log("PDF URL ADDED.");
+                }
+            });
+        }
+    });
+
+
+    res.json({ allData })
 });
 
-// [
-//     {
-//         time: "07/09/2023-00:00:33.672568",
-//         alert: "SURICATA STREAM excessive retransmissions",
-//         protocol: "TCP",
-//         src_ip: "216.250.10.170",
-//         src_port: "443",
-//         destination_ip: "93.171.222.169",
-//         destination_port: "34066"
-//     }
-// ]
 
 router.get("/test", async (req, res) => {
     console.log(new Date().toLocaleString("en-US", { timeZone: "Asia/Ashgabat" }));
@@ -89,6 +257,6 @@ router.get("/test", async (req, res) => {
     });
 });
 
-// islemeli haydan
+
 
 module.exports = router;
