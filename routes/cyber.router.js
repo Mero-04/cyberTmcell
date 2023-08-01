@@ -109,10 +109,16 @@ router.get("/", async (req, res) => {
                 return obj.id == month.slice(0, 2);
             });
 
+
             let result = alerts.filter(function (item) {
                 return typeof item.time == "string" && item.time.startsWith(month.slice(0, 2) + "/");
                 // return typeof item.time == "string" && item.time.startsWith("06/");
             });
+
+            if (result[0] === undefined) {
+                res.json({ error: "Maglumat yok!" });
+                return;
+            }
 
             const data1 = Object.values(
                 result.reduce((map, el) => {
@@ -397,10 +403,16 @@ router.get("/month_current", isAdmin, async (req, res) => {
                 return obj.id == month.slice(0, 2);
             });
 
+
             let result = alerts.filter(function (item) {
                 return typeof item.time == "string" && item.time.startsWith(month.slice(0, 2) + "/");
                 // return typeof item.time == "string" && item.time.startsWith("06/");
             });
+
+            if (result[0] === undefined) {
+                res.json({ error: "Maglumat yok!" });
+                return;
+            }
 
             const data1 = Object.values(
                 result.reduce((map, el) => {
