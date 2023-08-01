@@ -8,6 +8,8 @@ const emailService = require("../helpers/send-mail");
 const moment = require("moment");
 var LineByLineReader = require('line-by-line');
 
+const { Datacyber } = require("../models/model")
+
 const atlar = [
     { id: "01", month: "Ýanwar" },
     { id: "02", month: "Fewral" },
@@ -36,17 +38,8 @@ global.createPDFFile = function (htmlString, fileName, callback) {
     });
 };
 
-// router.get("/", async (req, res) => {
-//     let data = fs.readFileSync(`./logs/eve.json`, "utf-8");
-//     let info = data.toString().split("\n");
-//     var json = [];
-//     info.map(function (record) {
-//         var array = JSON.parse(`[${record.replace(/\}\n\{/g, "},{")}]`);
-//         json.push(array[0]);
-//     });
 
-//     res.json({json});
-// });
+
 
 router.get("/", async (req, res) => {
 
@@ -70,7 +63,7 @@ router.get("/", async (req, res) => {
     }
 
     test();
-    setTimeout(() => {
+    setTimeout(async () => {
 
 
         // let data = fs.readFileSync(`./logs/fast.log`);
@@ -119,10 +112,11 @@ router.get("/", async (req, res) => {
             alerts.push(obj);
         }
 
-        const month = moment().format("MM-DD-YYYY hh:mm");
+        const month = moment().subtract(1, 'months').format("MM-DD-YYYY");
+        const year = moment().subtract(1, 'months').format("YYYY")
 
         const thisMonthName = atlar.filter((obj) => {
-            return obj.id === month.slice(0, 2);
+            return obj.id == month.slice(0, 2);
         });
 
         let result = alerts.filter(function (item) {
@@ -256,7 +250,7 @@ router.get("/", async (req, res) => {
         const gosmaca = {};
 
         gosmaca["all_attacks"] = result.length
-        gosmaca["this_month"] = thisMonthName[0].month + " " +  result[0].time.slice(6, 10)
+        gosmaca["this_month"] = thisMonthName[0].month + " " + result[0].time.slice(6, 10)
 
         const allData = {
             gundelikGrafikDays,
@@ -272,13 +266,8 @@ router.get("/", async (req, res) => {
             gosmaca
         };
 
-        // res.render('hasabat', {
-        //     gundelikGrafikAtly: gundelikGrafikAtly,
-        //     gundelikGrafik: gundelikGrafik,
-        //     attacks: attacks,
-        //     ip: ip,
-        //     ip2: ip2
-        // })
+        var database_Data = JSON.stringify(allData);
+
 
         ejs.renderFile(
             path.join(__dirname, "../views/", "hasabat.ejs"),
@@ -299,20 +288,295 @@ router.get("/", async (req, res) => {
                 if (err) {
                     res.send(err);
                 } else {
-                    global.createPDFFile(data, month.slice(0, 2) + ".pdf", async function (err, result) {
+                    global.createPDFFile(data, "TMCELL - kiber hüjümleriň hasabaty " + thisMonthName[0].month + " " + year + ".pdf", async function (err, result) {
                         if (err) {
                             console.log(err);
                         } else {
                             console.log("PDF URL ADDED.");
+                            var maillist = ["mr.akynyaz29@gmail.com"];
+                            await emailService.sendMail({
+                                from: process.env.EMAIL_USER,
+                                to: maillist,
+                                subject: "TMCELL - Kiber hasabat " + thisMonthName[0].month + " " + year,
+                                html: "<b>TMCELL Hasabat " + thisMonthName[0].month + " " + year + "</b>",
+                                attachments: [
+                                    {
+                                        filename: "TMCELL - kiber hüjümleriň hasabaty " + thisMonthName[0].month + " " + year + ".pdf",
+                                        path: "./public/pdf/TMCELL - kiber hüjümleriň hasabaty " + thisMonthName[0].month + " " + year + ".pdf",
+                                        contentType: "application/pdf",
+                                    },
+                                ],
+                            });
+                            console.log("ended creating mail");
                         }
                     });
                 }
             }
         );
 
+        await Datacyber.create({
+            months: month,
+            month_name: thisMonthName[0].month,
+            data: database_Data
+        })
+
         res.json({ allData });
     }, 10000);
 });
+
+router.get("/data/:month", async (req, res) => {
+    // const current_months = moment().format("MM-DD-YYYY");
+    const month = req.params.month;
+
+    await Datacyber.findAll({ where: { months: month } }).then((data) => {
+        res.json({ data: data })
+    })
+
+
+})
+
+router.get("/month", async (req, res) => {
+    await Datacyber.findAll({ attributes: { exclude: ['data', 'createdAt', 'updatedAt'] } }).then((data) => {
+        res.json({ data: data })
+    })
+})
+
+router.get("/month_current", async (req, res) => {
+
+    var info = [];
+
+    const test = () => {
+        lr = new LineByLineReader('./logs/fast.log');
+
+        lr.on('error', function (err) {
+            // 'err' contains error object
+        });
+
+        lr.on('line', function (line) {
+            info.push(line)
+        });
+
+        lr.on('end', function () {
+
+        });
+    }
+
+    test();
+    setTimeout(async () => {
+
+
+        // let data = fs.readFileSync(`./logs/fast.log`);
+        // let info = data.toString().split("\n");
+        // console.log(info)
+        var alerts = [];
+        for (i = 0; i < info.length; i++) {
+            let text = info[i];
+
+            const day = text.substring(3, 5);
+
+            const time = text.substring(0, 25);
+            text = text.substring(34);
+
+            const hex = text.substring(0, 11);
+            text = text.substring(13);
+
+            const alert = text.substring(0, text.indexOf("[**]") - 1);
+            text = text.substring(text.indexOf("{") + 1);
+
+            const protocol = text.substring(0, text.indexOf("}"));
+            text = text.substring(text.indexOf("}") + 2);
+
+            const destination_ip = text.substring(0, text.indexOf(":"));
+            text = text.substring(text.indexOf(":") + 1);
+
+            const destination_port = text.substring(0, text.indexOf("->") - 1);
+            text = text.substring(text.indexOf("->") + 3);
+
+            const src_ip = text.substring(0, text.indexOf(":"));
+            text = text.substring(text.indexOf(":") + 1);
+
+            const src_port = text.substring(0);
+
+            let obj = {
+                day: day,
+                time: time,
+                hex: hex,
+                alert: alert,
+                protocol: protocol,
+                destination_ip: destination_ip,
+                destination_port: destination_port,
+                src_ip: src_ip,
+                src_port: src_port,
+            };
+            alerts.push(obj);
+        }
+
+        const month = moment().format("MM-DD-YYYY");
+
+        const thisMonthName = atlar.filter((obj) => {
+            return obj.id == month.slice(0, 2);
+        });
+
+        let result = alerts.filter(function (item) {
+            return typeof item.time == "string" && item.time.startsWith(month.slice(0, 2) + "/");
+            // return typeof item.time == "string" && item.time.startsWith("06/");
+        });
+
+        const data1 = Object.values(
+            result.reduce((map, el) => {
+                map[el.day]
+                    ? map[el.day].count++
+                    : (map[el.day] = {
+                        ...el,
+                        count: 1,
+                    });
+                return map;
+            }, {})
+        ).sort((a, b) => a.day - b.day);
+
+        const data2 = Object.values(
+            result.reduce((map, el) => {
+                map[el.alert]
+                    ? map[el.alert].count++
+                    : (map[el.alert] = {
+                        ...el,
+                        count: 1,
+                    });
+                return map;
+            }, {})
+        );
+
+        const data3 = Object.values(
+            result.reduce((map, el) => {
+                map[el.destination_ip]
+                    ? map[el.destination_ip].count++
+                    : (map[el.destination_ip] = {
+                        ...el,
+                        count: 1,
+                    });
+                return map;
+            }, {})
+        );
+
+        const gundelikGrafikDays = data1.map((data) => {
+            if (data.day.charAt(0) === "0") {
+                return parseInt(data.day.substring(1));
+            }
+            return parseInt(data.day);
+        });
+
+        const gundelikGrafikDaysCount = data1.map((data) => {
+            return data.count;
+        });
+
+        const gundelikGrafikAtly1 = data1
+            .map((data) => {
+                if (data.day.charAt(0) === "0") {
+                    return {
+                        day: thisMonthName[0].month + " " + data.day.substring(1),
+                        count: data.count,
+                    }
+                }
+                return {
+                    day: thisMonthName[0].month + " " + data.day,
+                    count: data.count,
+                };
+            })
+            .sort((a, b) => b.day - a.day)
+            .slice(0, 10);
+
+        const gundelikGrafikAtly2 = data1
+            .map((data) => {
+                return {
+                    day: thisMonthName[0].month + " " + data.day,
+                    count: data.count,
+                };
+            })
+            .sort((a, b) => b.day - a.day)
+            .slice(10, 20);
+
+        const gundelikGrafikAtly3 = data1
+            .map((data) => {
+                return {
+                    day: thisMonthName[0].month + " " + data.day,
+                    count: data.count,
+                };
+            })
+            .sort((a, b) => b.day - a.day)
+            .slice(20);
+
+        const attacks = data2
+            .map((data) => {
+                return {
+                    name: data.alert,
+                    count: data.count,
+                };
+            })
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+
+
+        const attacksName = attacks.map((data) => {
+            return data.name;
+        });
+
+        const attacksCount = attacks.map((data) => {
+            return data.count;
+        });
+
+
+        const ip = data3
+            .map((data) => {
+                return {
+                    ip: data.destination_ip,
+                    count: data.count,
+                };
+            })
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+
+        const ip2 = data3
+            .map((data) => {
+                return {
+                    ip: data.destination_ip,
+                    count: data.count,
+                };
+            })
+            .sort((a, b) => b.count - a.count)
+            .slice(10, 20);
+
+        const gosmaca = {};
+
+        gosmaca["all_attacks"] = result.length
+        gosmaca["this_month"] = thisMonthName[0].month + " " + result[0].time.slice(6, 10)
+
+        const allData = {
+            gundelikGrafikDays,
+            gundelikGrafikDaysCount,
+            gundelikGrafikAtly1,
+            gundelikGrafikAtly2,
+            gundelikGrafikAtly3,
+            attacks,
+            ip,
+            ip2,
+            attacksName,
+            attacksCount,
+            gosmaca
+        };
+
+        var database_Data = JSON.stringify(allData);
+
+        const sss = [{
+            months: month,
+            month_name: thisMonthName[0].month,
+            data: database_Data
+        }
+        ]
+        res.json({
+            data: sss
+        });
+    }, 10000);
+})
 
 router.get("/test", async (req, res) => {
     console.log(new Date().toLocaleString("en-US", { timeZone: "Asia/Ashgabat" }));
