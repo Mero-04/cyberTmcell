@@ -27,7 +27,19 @@ const Datacyber = sequelize.define("datacyber", {
 });
 
 
+const DataWeek = sequelize.define("dataweek", {
+    id: {
+        type: DataTypes.INTEGER(10),
+        autoIncrement: true,
+        primaryKey: true,
+        allowNull: false,
+    },  
+    week: { type: DataTypes.STRING, allowNull: false },
+    data: { type: DataTypes.TEXT, allowNull: false }
+});
+
 module.exports = {
     Admin,
-    Datacyber
+    Datacyber,
+    DataWeek
 };
